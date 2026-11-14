@@ -1,0 +1,209 @@
+
+using UnityEngine;
+using System.Collections;
+
+public class TurnManager : MonoBehaviour
+{
+    public enum ActionPhase
+    {
+        Shoot,
+        Dodge,
+        Executing
+    }
+
+    [Header("Players")]
+    public PlayerController player1;
+    public PlayerController player2;
+
+    [Header("Drag Settings")]
+    public float maxDragDistance = 3f;
+    public float minDragDistance = 0.2f;
+
+    [Header("Visuals")]
+    public Transform aimArrow;
+
+    [Header("Turn Settings")]
+    public float turnDelay = 0.5f;
+
+    private Camera mainCamera;
+    private Plane groundPlane;
+
+    private PlayerController currentPlayer;
+    private ActionPhase currentPhase;
+
+    private bool isDragging;
+
+    private Vector3 dragDirection;
+    private float dragStrength;
+
+    private Vector3 player1ShotDirection;
+    private Vector3 player2ShotDirection;
+
+    private Vector3 player1DodgeDirection;
+    private Vector3 player2DodgeDirection;
+
+    private float player1DodgeStrength;
+    private float player2DodgeStrength;
+
+    private void Start()
+    {
+        mainCamera = Camera.main;
+        groundPlane = new Plane(Vector3.up, Vector3.zero);
+
+        if (aimArrow != null)
+            aimArrow.gameObject.SetActive(false);
+
+        StartPlayerTurn(player1);
+    }
+
+    private void Update()
+    {
+        if (currentPhase == ActionPhase.Executing)
+            return;
+
+        if (Input.GetMouseButtonDown(0))
+            StartDrag();
+
+        if (isDragging && Input.GetMouseButton(0))
+            UpdateDrag();
+
+        if (isDragging && Input.GetMouseButtonUp(0))
+            FinishDrag();
+    }
+
+    private void StartPlayerTurn(PlayerController player)
+    {
+        currentPlayer = player;
+        currentPhase = ActionPhase.Shoot;
+
+        Debug.Log("Player " + player.playerNumber + ": Choose shooting direction");
+    }
+
+    private void StartDrag()
+    {
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+        if (!Physics.Raycast(ray, out RaycastHit hit))
+            return;
+
+        if (hit.transform != currentPlayer.transform &&
+            !hit.transform.IsChildOf(currentPlayer.transform))
+            return;
+
+        isDragging = true;
+        dragStrength = 0f;
+    }
+
+    private void UpdateDrag()
+    {
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+        if (!groundPlane.Raycast(ray, out float distance))
+            return;
+
+        Vector3 mousePosition = ray.GetPoint(distance);
+
+        Vector3 drag = mousePosition - currentPlayer.transform.position;
+        drag.y = 0f;
+
+        if (drag.magnitude < 0.001f)
+            return;
+
+        dragDirection = drag.normalized;
+
+        dragStrength = Mathf.Clamp01(
+            drag.magnitude / maxDragDistance
+        );
+
+        UpdateArrow();
+    }
+
+    private void UpdateArrow()
+    {
+        if (aimArrow == null)
+            return;
+
+        aimArrow.gameObject.SetActive(true);
+
+        aimArrow.position =
+            currentPlayer.transform.position + Vector3.up * 0.1f;
+
+        aimArrow.rotation = Quaternion.LookRotation(dragDirection);
+
+        Vector3 scale = aimArrow.localScale;
+        scale.z = dragStrength * maxDragDistance;
+        aimArrow.localScale = scale;
+    }
+
+    private void FinishDrag()
+    {
+        isDragging = false;
+
+        if (aimArrow != null)
+            aimArrow.gameObject.SetActive(false);
+
+        if (dragStrength < minDragDistance / maxDragDistance)
+            return;
+
+        if (currentPhase == ActionPhase.Shoot)
+        {
+            if (currentPlayer == player1)
+                player1ShotDirection = dragDirection;
+            else
+                player2ShotDirection = dragDirection;
+
+            currentPhase = ActionPhase.Dodge;
+
+            Debug.Log("Player " + currentPlayer.playerNumber +
+                      ": Now choose dodge direction");
+        }
+        else if (currentPhase == ActionPhase.Dodge)
+        {
+            if (currentPlayer == player1)
+            {
+                player1DodgeDirection = dragDirection;
+                player1DodgeStrength = dragStrength;
+
+                StartPlayerTurn(player2);
+            }
+            else
+            {
+                player2DodgeDirection = dragDirection;
+                player2DodgeStrength = dragStrength;
+
+                StartCoroutine(ExecuteTurn());
+            }
+        }
+
+        dragStrength = 0f;
+    }
+
+    private IEnumerator ExecuteTurn()
+    {
+        currentPhase = ActionPhase.Executing;
+
+        Debug.Log("Both players have submitted their actions!");
+        Debug.Log("Executing turn...");
+
+        // Both players dodge simultaneously.
+        player1.ExecuteDodge(
+            player1DodgeDirection,
+            player1DodgeStrength
+        );
+
+        player2.ExecuteDodge(
+            player2DodgeDirection,
+            player2DodgeStrength
+        );
+
+        // Shooting directions are saved for the projectile system.
+        Debug.Log("Player 1 shoots: " + player1ShotDirection);
+        Debug.Log("Player 2 shoots: " + player2ShotDirection);
+
+        yield return new WaitForSeconds(player1.dodgeDuration);
+
+        yield return new WaitForSeconds(turnDelay);
+
+        StartPlayerTurn(player1);
+    }
+}
