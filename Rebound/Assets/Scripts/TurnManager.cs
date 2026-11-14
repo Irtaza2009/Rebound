@@ -20,10 +20,15 @@ public class TurnManager : MonoBehaviour
     public float minDragDistance = 0.2f;
 
     [Header("Visuals")]
-    public Transform aimArrow;
+    public Transform dodgeAimArrow;
+    public Transform shootAimArrow;
 
     [Header("Turn Settings")]
     public float turnDelay = 0.5f;
+
+    [Header("Projectile Settings")]
+    public GameObject projectilePrefab;
+    public float projectileSpawnOffset = 0.8f;
 
     private Camera mainCamera;
     private Plane groundPlane;
@@ -45,13 +50,18 @@ public class TurnManager : MonoBehaviour
     private float player1DodgeStrength;
     private float player2DodgeStrength;
 
+    public float projectilePhaseDuration = 3f;
+
     private void Start()
     {
         mainCamera = Camera.main;
         groundPlane = new Plane(Vector3.up, Vector3.zero);
 
-        if (aimArrow != null)
-            aimArrow.gameObject.SetActive(false);
+        if (dodgeAimArrow != null)
+            dodgeAimArrow.gameObject.SetActive(false);
+
+        if (shootAimArrow != null)
+            shootAimArrow.gameObject.SetActive(false);
 
         StartPlayerTurn(player1);
     }
@@ -120,27 +130,37 @@ public class TurnManager : MonoBehaviour
 
     private void UpdateArrow()
     {
-        if (aimArrow == null)
+        Transform activeAimArrow =
+            currentPhase == ActionPhase.Shoot ? shootAimArrow : dodgeAimArrow;
+
+        if (activeAimArrow == null)
             return;
 
-        aimArrow.gameObject.SetActive(true);
+        if (shootAimArrow != null)
+            shootAimArrow.gameObject.SetActive(currentPhase == ActionPhase.Shoot);
 
-        aimArrow.position =
+        if (dodgeAimArrow != null)
+            dodgeAimArrow.gameObject.SetActive(currentPhase == ActionPhase.Dodge);
+
+        activeAimArrow.position =
             currentPlayer.transform.position + Vector3.up * 0.1f;
 
-        aimArrow.rotation = Quaternion.LookRotation(dragDirection);
+        activeAimArrow.rotation = Quaternion.LookRotation(dragDirection);
 
-        Vector3 scale = aimArrow.localScale;
+        Vector3 scale = activeAimArrow.localScale;
         scale.z = dragStrength * maxDragDistance;
-        aimArrow.localScale = scale;
+        activeAimArrow.localScale = scale;
     }
 
     private void FinishDrag()
     {
         isDragging = false;
 
-        if (aimArrow != null)
-            aimArrow.gameObject.SetActive(false);
+        if (dodgeAimArrow != null)
+            dodgeAimArrow.gameObject.SetActive(false);
+
+        if (shootAimArrow != null)
+            shootAimArrow.gameObject.SetActive(false);
 
         if (dragStrength < minDragDistance / maxDragDistance)
             return;
@@ -185,7 +205,11 @@ public class TurnManager : MonoBehaviour
         Debug.Log("Both players have submitted their actions!");
         Debug.Log("Executing turn...");
 
-        // Both players dodge simultaneously.
+        // shoot
+        FireProjectile(player1, player1ShotDirection);
+        FireProjectile(player2, player2ShotDirection);
+
+        // dodge 
         player1.ExecuteDodge(
             player1DodgeDirection,
             player1DodgeStrength
@@ -196,14 +220,36 @@ public class TurnManager : MonoBehaviour
             player2DodgeStrength
         );
 
-        // Shooting directions are saved for the projectile system.
-        Debug.Log("Player 1 shoots: " + player1ShotDirection);
-        Debug.Log("Player 2 shoots: " + player2ShotDirection);
-
-        yield return new WaitForSeconds(player1.dodgeDuration);
+        yield return new WaitForSeconds(
+            Mathf.Max(player1.dodgeDuration, projectilePhaseDuration)
+        );
 
         yield return new WaitForSeconds(turnDelay);
 
         StartPlayerTurn(player1);
     }
+
+
+    private void FireProjectile(PlayerController shooter, Vector3 direction)
+    {
+        Vector3 spawnPosition = shooter.transform.position +
+                                direction.normalized * projectileSpawnOffset;
+
+        GameObject projectileObject = Instantiate(
+            projectilePrefab,
+            spawnPosition,
+            Quaternion.LookRotation(direction)
+        );
+
+        ProjectileController projectile =
+            projectileObject.GetComponent<ProjectileController>();
+
+        projectile.OnPlayerHit += (hitPlayer) =>
+        {
+            Debug.Log("Player " + hitPlayer.playerNumber + " was hit!");
+        };
+
+        projectile.Initialize(direction);
+    }
+
 }
