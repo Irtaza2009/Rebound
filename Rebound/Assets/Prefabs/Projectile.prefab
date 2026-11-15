@@ -160,6 +160,9 @@ MonoBehaviour:
   bounceVfxPrefab: {fileID: 804960931844328188, guid: 618ac22357470ba4591b4045fe40bdc0, type: 3}
   hitVfxPrefab: {fileID: 96456038969793339, guid: f499d58e2b0a6954290aa36c0f9d81be, type: 3}
   trailRenderer: {fileID: 827106081059843350}
+  audioSource: {fileID: 0}
+  bounceSound: {fileID: 8300000, guid: bd3fbed8ca8044bbf8cc1a8bc15ede10, type: 3}
+  bounceVolume: 0.7
 --- !u!96 &827106081059843350
 TrailRenderer:
   serializedVersion: 4
