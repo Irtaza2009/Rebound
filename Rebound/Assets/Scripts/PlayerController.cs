@@ -1,7 +1,7 @@
-
 using UnityEngine;
 using System.Collections;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Player Settings")]
@@ -11,32 +11,43 @@ public class PlayerController : MonoBehaviour
     public float maxDodgeDistance = 6f;
     public float dodgeDuration = 0.4f;
 
+    [Header("Physics")]
+    public float drag = 0.2f;
+
+    private Rigidbody rb;
+    private bool isDodging;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+
+        rb.useGravity = true;
+        rb.linearDamping = drag;
+        rb.angularDamping = 0f;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+    }
+
     public void ExecuteDodge(Vector3 direction, float strength)
     {
+        if (isDodging)
+            return;
+
         StartCoroutine(Dodge(direction, strength));
     }
 
     private IEnumerator Dodge(Vector3 direction, float strength)
     {
-        Vector3 startPosition = transform.position;
+        isDodging = true;
 
-        Vector3 targetPosition = startPosition +
-            direction.normalized * (strength * maxDodgeDistance);
+        direction.y = 0f;
+        direction.Normalize();
 
-        float elapsed = 0f;
+        float dodgeSpeed = maxDodgeDistance / dodgeDuration;
 
-        while (elapsed < dodgeDuration)
-        {
-            transform.position = Vector3.Lerp(
-                startPosition,
-                targetPosition,
-                elapsed / dodgeDuration
-            );
+        rb.linearVelocity = direction * dodgeSpeed * strength;
 
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
+        yield return new WaitForSeconds(dodgeDuration);
 
-        transform.position = targetPosition;
+        isDodging = false;
     }
 }
