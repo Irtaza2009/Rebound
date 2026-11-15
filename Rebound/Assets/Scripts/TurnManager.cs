@@ -15,6 +15,9 @@ public class TurnManager : MonoBehaviour
     public PlayerController player1;
     public PlayerController player2;
 
+    [Header("UI")]
+    public UIManager uiManager;
+
     [Header("Drag Settings")]
     public float maxDragDistance = 3f;
     public float minDragDistance = 0.2f;
@@ -57,6 +60,9 @@ public class TurnManager : MonoBehaviour
         mainCamera = Camera.main;
         groundPlane = new Plane(Vector3.up, Vector3.zero);
 
+        if (uiManager == null)
+            uiManager = GetComponent<UIManager>();
+
         if (dodgeAimArrow != null)
             dodgeAimArrow.gameObject.SetActive(false);
 
@@ -86,7 +92,15 @@ public class TurnManager : MonoBehaviour
         currentPlayer = player;
         currentPhase = ActionPhase.Shoot;
 
-        Debug.Log("Player " + player.playerNumber + ": Choose shooting direction");
+        if (uiManager != null)
+        {
+            uiManager.ShowTurn(
+                player.playerNumber,
+                "Choose shoot direction"
+            );
+        }
+
+        Debug.Log("Player " + player.playerNumber + ": Choose shoot direction");
     }
 
     private void StartDrag()
@@ -174,6 +188,14 @@ public class TurnManager : MonoBehaviour
 
             currentPhase = ActionPhase.Dodge;
 
+            if (uiManager != null)
+            {
+                uiManager.UpdateInstruction(
+                    currentPlayer.playerNumber,
+                    "Choose dodge direction"
+                );
+            }
+
             Debug.Log("Player " + currentPlayer.playerNumber +
                       ": Now choose dodge direction");
         }
@@ -201,6 +223,9 @@ public class TurnManager : MonoBehaviour
     private IEnumerator ExecuteTurn()
     {
         currentPhase = ActionPhase.Executing;
+
+        if (uiManager != null)
+            uiManager.HideTurnUI();
 
         Debug.Log("Both players have submitted their actions!");
         Debug.Log("Executing turn...");
@@ -246,6 +271,9 @@ public class TurnManager : MonoBehaviour
 
         projectile.OnPlayerHit += (hitPlayer) =>
         {
+            if (uiManager != null)
+                uiManager.LoseHeart(hitPlayer.playerNumber);
+
             Debug.Log("Player " + hitPlayer.playerNumber + " was hit!");
         };
 
