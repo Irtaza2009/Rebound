@@ -13,6 +13,13 @@ public class ProjectileController : MonoBehaviour
     public GameObject bounceVfxPrefab;
     public GameObject hitVfxPrefab;
     public TrailRenderer trailRenderer;
+    
+
+    [Header("Bounce Audio")]
+private AudioSource audioSource;
+public AudioClip bounceSound;
+[Range(0f, 1f)]
+public float bounceVolume = 0.7f;
 
     private Rigidbody rb;
     private Vector3 direction;
@@ -21,14 +28,15 @@ public class ProjectileController : MonoBehaviour
 
     public event Action<PlayerController> OnPlayerHit;
 
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody>();
+    
+private void Awake()
+{
+    rb = GetComponent<Rigidbody>();
+    audioSource = GetComponent<AudioSource>();
 
-        // Configure Rigidbody for reliable, non-gravity laser flight
-        rb.useGravity = false;
-        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-    }
+    rb.useGravity = false;
+    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+}
 
     public void Initialize(Vector3 shootDirection)
     {
@@ -85,6 +93,11 @@ public class ProjectileController : MonoBehaviour
 
         // Spawn bounce spark and rotate the laser bolt to face the new direction
         SpawnVfx(bounceVfxPrefab, contact.point, contact.normal);
+
+       if (audioSource != null && bounceSound != null)
+{
+    audioSource.PlayOneShot(bounceSound);
+}
 
         if (direction != Vector3.zero)
         {
