@@ -31,7 +31,7 @@ public class TurnManager : MonoBehaviour
 
     [Header("Projectile Settings")]
     public GameObject projectilePrefab;
-    public float projectileSpawnOffset = 0.8f;
+    public float projectileSpawnOffset = 1.5f;
 
     private Camera mainCamera;
     private Plane groundPlane;
@@ -40,6 +40,7 @@ public class TurnManager : MonoBehaviour
     private ActionPhase currentPhase;
 
     private bool isDragging;
+    private bool gameOver;
 
     private Vector3 dragDirection;
     private float dragStrength;
@@ -74,7 +75,7 @@ public class TurnManager : MonoBehaviour
 
     private void Update()
     {
-        if (currentPhase == ActionPhase.Executing)
+        if (gameOver || currentPhase == ActionPhase.Executing)
             return;
 
         if (Input.GetMouseButtonDown(0))
@@ -89,6 +90,9 @@ public class TurnManager : MonoBehaviour
 
     private void StartPlayerTurn(PlayerController player)
     {
+        if (gameOver)
+            return;
+
         currentPlayer = player;
         currentPhase = ActionPhase.Shoot;
 
@@ -257,13 +261,14 @@ public class TurnManager : MonoBehaviour
 
     private void FireProjectile(PlayerController shooter, Vector3 direction)
     {
+        Vector3 fireDirection = direction.normalized;
         Vector3 spawnPosition = shooter.transform.position +
-                                direction.normalized * projectileSpawnOffset;
+                                fireDirection * projectileSpawnOffset;
 
         GameObject projectileObject = Instantiate(
             projectilePrefab,
             spawnPosition,
-            Quaternion.LookRotation(direction)
+            Quaternion.LookRotation(fireDirection)
         );
 
         ProjectileController projectile =
@@ -271,13 +276,31 @@ public class TurnManager : MonoBehaviour
 
         projectile.OnPlayerHit += (hitPlayer) =>
         {
+            int remainingLives = hitPlayer.TakeDamage();
+
             if (uiManager != null)
-                uiManager.LoseHeart(hitPlayer.playerNumber);
+                uiManager.SetHealth(hitPlayer.playerNumber, remainingLives);
 
             Debug.Log("Player " + hitPlayer.playerNumber + " was hit!");
+
+            if (remainingLives == 0)
+            {
+                PlayerController winner =
+                    hitPlayer == player1 ? player2 : player1;
+
+                gameOver = true;
+
+                if (uiManager != null)
+                {
+                    uiManager.ShowGameOver(
+                        winner.playerNumber,
+                        winner.GetPlayerColor()
+                    );
+                }
+            }
         };
 
-        projectile.Initialize(direction);
+        projectile.Initialize(fireDirection);
     }
 
 }

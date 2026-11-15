@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -19,12 +21,17 @@ public class UIManager : MonoBehaviour
     public Sprite greyHeartSprite;
     public Sprite fullHeartSprite;
 
+    [Header("Game Over UI")]
+    public GameObject gameOverPanel;
+    public TMP_Text winnerText;
+
     private int player1Health;
     private int player2Health;
 
     private void Awake()
     {
         HideTurnUI();
+        HideGameOver();
 
         SetHealth(1, 3);
         SetHealth(2, 3);
@@ -84,6 +91,40 @@ public class UIManager : MonoBehaviour
     public void HideAllUI()
     {
         HideTurnUI();
+    }
+
+    public void ShowGameOver(int winnerNumber, Color winnerColor)
+    {
+        HideTurnUI();
+        StartCoroutine(ShowGameOverAfterDelay(winnerNumber, winnerColor));
+    }
+
+    private IEnumerator ShowGameOverAfterDelay(
+        int winnerNumber,
+        Color winnerColor
+    )
+    {
+        yield return new WaitForSeconds(5f);
+
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(true);
+
+        if (winnerText != null)
+        {
+            winnerText.text = "Player " + winnerNumber + " Won!";
+            winnerText.color = winnerColor;
+        }
+    }
+
+    public void HideGameOver()
+    {
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(false);
+    }
+
+    public void RestartGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void SetHealth(int playerNumber, int health)
