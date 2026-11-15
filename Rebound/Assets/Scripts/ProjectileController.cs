@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(AudioSource))]
 public class ProjectileController : MonoBehaviour
 {
     [Header("Projectile Settings")]
@@ -13,30 +14,34 @@ public class ProjectileController : MonoBehaviour
     public GameObject bounceVfxPrefab;
     public GameObject hitVfxPrefab;
     public TrailRenderer trailRenderer;
-    
 
     [Header("Bounce Audio")]
-private AudioSource audioSource;
-public AudioClip bounceSound;
-[Range(0f, 1f)]
-public float bounceVolume = 0.7f;
+    public AudioClip bounceSound;
+    [Range(0f, 1f)]
+    public float bounceVolume = 0.7f;
 
     private Rigidbody rb;
+    private AudioSource audioSource;
     private Vector3 direction;
     private int bounceCount;
     private bool initialized;
 
     public event Action<PlayerController> OnPlayerHit;
 
-    
-private void Awake()
-{
-    rb = GetComponent<Rigidbody>();
-    audioSource = GetComponent<AudioSource>();
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        audioSource = GetComponent<AudioSource>();
 
-    rb.useGravity = false;
-    rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-}
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f;
+
+        rb.useGravity = false;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+    }
 
     public void Initialize(Vector3 shootDirection)
     {
@@ -84,6 +89,9 @@ private void Awake()
         direction = Vector3.Reflect(direction, contact.normal).normalized;
         bounceCount++;
 
+        if (bounceSound != null)
+            audioSource.PlayOneShot(bounceSound, bounceVolume);
+
         if (bounceCount >= maxBounces)
         {
             SpawnVfx(hitVfxPrefab, contact.point, contact.normal);
@@ -93,11 +101,6 @@ private void Awake()
 
         // Spawn bounce spark and rotate the laser bolt to face the new direction
         SpawnVfx(bounceVfxPrefab, contact.point, contact.normal);
-
-       if (audioSource != null && bounceSound != null)
-{
-    audioSource.PlayOneShot(bounceSound);
-}
 
         if (direction != Vector3.zero)
         {
