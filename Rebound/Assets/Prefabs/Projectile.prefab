@@ -154,7 +154,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc0f282c85c62204a99b9a5afcd37fdd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  speed: 15
+  speed: 20
   maxBounces: 4
   lifetime: 8
   bounceVfxPrefab: {fileID: 804960931844328188, guid: 618ac22357470ba4591b4045fe40bdc0, type: 3}
